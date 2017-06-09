@@ -57,7 +57,7 @@ func Create(u []Unit, n int) []Unit {
 				if weight > d[i][j].Weight {
 					break
 				}
-				if max(weight, last) < d[i][j].Weight {
+				if max(weight, last) <= d[i][j].Weight {
 					d[i][j] = Unit{
 						Name:   sessionName(u[k+1], u[j]),
 						Weight: max(weight, last),
