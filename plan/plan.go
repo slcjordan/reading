@@ -7,13 +7,6 @@ type Unit struct {
 	prev   int
 }
 
-func min(a, b int64) int64 {
-	if a < b {
-		return a
-	}
-	return b
-}
-
 func max(a, b int64) int64 {
 	if a > b {
 		return a
@@ -28,17 +21,17 @@ func sessionName(a, b Unit) string {
 	return a.Name + " through " + b.Name
 }
 
-// Plan will generate a reading plan.
-func Plan(u []Unit, n int) []Unit {
+// Create will generate a reading plan.
+func Create(u []Unit, n int) []Unit {
 	if len(u) <= 0 {
 		return u
 	}
 
-	h, w = len(u), n
+	h, w := len(u), n
 	d := make([][]Unit, w)
 
 	for i := 0; i < n; i++ {
-		d[i] = make([]Unit, w)
+		d[i] = make([]Unit, h)
 	}
 
 	var running int64
@@ -66,7 +59,7 @@ func Plan(u []Unit, n int) []Unit {
 				}
 				if max(weight, last) < d[i][j].Weight {
 					d[i][j] = Unit{
-						Name:   sessionName(u[i], u[j]),
+						Name:   sessionName(u[k+1], u[j]),
 						Weight: max(weight, last),
 						prev:   k,
 					}
