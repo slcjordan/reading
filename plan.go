@@ -103,6 +103,9 @@ func Plan(filename string, days int, breakdowns ...Breakdown) []Unit {
 		maxint(len(cache), 1),
 		days,
 	)
+	if len(curr) > 200 {
+		curr = curr[:200]
+	}
 	if len(curr) > len(cache) {
 		contents, err := json.Marshal(curr)
 		if err != nil {
