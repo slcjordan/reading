@@ -5,7 +5,6 @@ import (
 	"os"
 
 	"github.com/slcjordan/reading"
-	"github.com/slcjordan/reading/plan"
 )
 
 func main() {
@@ -34,12 +33,13 @@ func main() {
 		[]reading.Breakdown{reading.Book, reading.Chapter},
 		[]reading.Breakdown{reading.Reference},
 	}[idx-1]
-	p := plan.Create(
-		reading.Load("../books/book-of-mormon.json", b...),
+	p := reading.Plan(
+		"../books/book-of-mormon.json",
 		days,
+		b...,
 	)
 	fmt.Printf("in order to read the book of mormon in %d days:\n", days)
 	for i, session := range p {
-		fmt.Printf("day %d: %s\n", i+1, session.Name)
+		fmt.Printf("day %d: %s\n", i+1, session.Title)
 	}
 }
