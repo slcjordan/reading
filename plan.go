@@ -1,10 +1,11 @@
 package reading
 
 import (
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"log"
-	"path"
 	"strings"
 )
 
@@ -24,23 +25,20 @@ type verse struct {
 }
 
 // Breakdown will group the reading by a category.
-type Breakdown struct {
-	Name   string
-	Select func(v verse) string
-}
+type Breakdown func(v verse) string
 
-var Book = Breakdown{Name: "Book", Select: func(v verse) string { return v.Book }}
-var Chapter = Breakdown{Name: "Chapter", Select: func(v verse) string { return v.Chapter.String() }}
-var FullTitle = Breakdown{Name: "FullTitle", Select: func(v verse) string { return v.FullTitle }}
-var LDSSlug = Breakdown{Name: "LDSSlug", Select: func(v verse) string { return v.LDSSlug }}
-var Reference = Breakdown{Name: "Reference", Select: func(v verse) string { return v.Reference }}
-var Text = Breakdown{Name: "Text", Select: func(v verse) string { return v.Text }}
-var Verse = Breakdown{Name: "Verse", Select: func(v verse) string { return v.Verse.String() }}
-var LastModified = Breakdown{Name: "LastModified", Select: func(v verse) string { return v.LastModified }}
-var Section = Breakdown{Name: "Section", Select: func(v verse) string { return v.Section }}
-var Subsubtitle = Breakdown{Name: "Subsubtitle", Select: func(v verse) string { return v.Subsubtitle }}
-var Subtitle = Breakdown{Name: "Subtitle", Select: func(v verse) string { return v.Subtitle }}
-var Version = Breakdown{Name: "Version", Select: func(v verse) string { return v.Version }}
+func Book(v verse) string         { return v.Book }
+func Chapter(v verse) string      { return v.Chapter.String() }
+func FullTitle(v verse) string    { return v.FullTitle }
+func LDSSlug(v verse) string      { return v.LDSSlug }
+func Reference(v verse) string    { return v.Reference }
+func Text(v verse) string         { return v.Text }
+func Verse(v verse) string        { return v.Verse.String() }
+func LastModified(v verse) string { return v.LastModified }
+func Section(v verse) string      { return v.Section }
+func Subsubtitle(v verse) string  { return v.Subsubtitle }
+func Subtitle(v verse) string     { return v.Subtitle }
+func Version(v verse) string      { return v.Version }
 
 // A Unit is the lowest unit of reading.
 type Unit struct {
@@ -49,25 +47,49 @@ type Unit struct {
 	Prev   int
 }
 
-func min(a, b int) int {
+func maxInt(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
+}
+
+func minInt(a, b int) int {
 	if a < b {
 		return a
 	}
 	return b
 }
 
-func maxint(a, b int) int {
-	if a > b {
-		return a
+func hashTitles(units []Unit) string {
+	h := md5.New()
+	for _, u := range units {
+		h.Write([]byte(u.Title))
 	}
-	return b
+	return hex.EncodeToString(h.Sum(nil))
 }
 
-func max(a, b float64) float64 {
-	if a > b {
-		return a
+func maybeLoadCache(filename string) [][]Unit {
+	var cache [][]Unit
+	contents, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Println("could not read file ", filename, err)
+		return nil
 	}
-	return b
+	_ = json.Unmarshal(contents, &cache)
+	return cache
+}
+
+func maybeSaveCache(filename string, cache [][]Unit) {
+	if len(cache) > 200 {
+		cache = cache[:200]
+	}
+	contents, err := json.Marshal(cache)
+	if err != nil {
+		log.Println("could not read file ", filename, err)
+		return
+	}
+	_ = ioutil.WriteFile(filename, contents, 0664) // permission
 }
 
 func sessionTitle(a, b Unit) string {
@@ -77,81 +99,28 @@ func sessionTitle(a, b Unit) string {
 	return "Read " + a.Title + " - " + b.Title
 }
 
-// Plan will create a reading plan.
-func Plan(filename string, days int, breakdowns ...Breakdown) []Unit {
-	u := load(filename, breakdowns...)
-	var parts []string
-	for _, b := range breakdowns {
-		parts = append(parts, b.Name)
-	}
-	cachefile := "../cache/" + strings.Join(parts, "_") + "-" + path.Base(filename)
-	var cache [][]Unit
-	contents, err := ioutil.ReadFile(cachefile)
-	if err != nil {
-		/* do nothing */
-	} else {
-		_ = json.Unmarshal(contents, &cache)
-	}
-	curr := initialize(u, days)
-	for i := 1; i < min(len(cache), len(curr)); i++ {
-		curr[i] = cache[i]
-	}
+func buildDynamicPlan(u []Unit, cache [][]Unit, days int) [][]Unit {
+	plan := make([][]Unit, days+1)
 
-	result, curr := create(
-		u,
-		curr,
-		maxint(len(cache), 1),
-		days,
-	)
-	if len(curr) > 200 {
-		curr = curr[:200]
+	for i := 0; i < minInt(len(cache), days+1); i++ {
+		plan[i] = cache[i]
 	}
-	if len(curr) > len(cache) {
-		contents, err := json.Marshal(curr)
-		if err != nil {
-			/* do nothing */
-		} else {
-			_ = ioutil.WriteFile(cachefile, contents, 0664) // permission
-		}
+	for i := len(cache); i < days+1; i++ {
+		plan[i] = make([]Unit, len(u))
 	}
-	return result
-}
-
-func initialize(u []Unit, n int) [][]Unit {
-	h, w := len(u), n
-	d := make([][]Unit, w)
-
-	for i := 0; i < n; i++ {
-		d[i] = make([]Unit, h)
-	}
-
-	for j := 0; j < h; j++ {
-		d[0][j] = Unit{
-			Title:  sessionTitle(u[0], u[j]),
-			Weight: u[j].Weight * u[j].Weight,
-			Prev:   -1,
-		}
-	}
-	return d
-}
-
-func create(u []Unit, d [][]Unit, idx, n int) ([]Unit, [][]Unit) {
-	h := len(u)
-	for i := idx; i < n; i++ {
-		for j := h - 1; j >= 0; j-- {
-			readnothing := d[i-1][j].Weight
-			d[i][j].Weight = readnothing
-			d[i][j].Prev = j
+	for i := maxInt(len(cache), 1); i < days+1; i++ {
+		for j := len(u) - 1; j >= 0; j-- {
+			plan[i][j].Weight = u[j].Weight * u[j].Weight // initialize to reading everything.
+			plan[i][j].Title = sessionTitle(u[0], u[j])
 
 			for k := j - 1; k >= 0; k-- {
-				last := d[i-1][k].Weight
 				words := u[j].Weight - u[k].Weight
-				weight := ((words * words) + (float64(i) * last)) / (float64(i) + 1) // sum(words ^ 2) / n
-				if weight > readnothing {
+				weight := ((words * words) + (float64(i-1) * plan[i-1][k].Weight)) / float64(i) // sum(words ^ 2) / n
+				if weight > plan[i-1][j].Weight {
 					break
 				}
-				if weight <= d[i][j].Weight {
-					d[i][j] = Unit{
+				if weight <= plan[i][j].Weight {
+					plan[i][j] = Unit{
 						Title:  sessionTitle(u[k+1], u[j]),
 						Weight: weight,
 						Prev:   k,
@@ -160,14 +129,62 @@ func create(u []Unit, d [][]Unit, idx, n int) ([]Unit, [][]Unit) {
 			}
 		}
 	}
+	return plan
+}
 
-	result := make([]Unit, n)
-	j := h - 1
-	for i := n - 1; i >= 0 && j >= 0; i-- {
-		result[i] = d[i][j]
-		j = result[i].Prev
+func addTitles(u []Unit) []Unit {
+	for i := range u {
+		u[i].Title = sessionTitle(u[i], u[i])
 	}
-	return result, d
+	return u
+}
+
+// The Algorithm used to minimize the cost.
+type Algorithm func([]Unit, int) []Unit
+
+// Dynamic will try to minimize the maximum session word count.
+func Dynamic(u []Unit, days int) []Unit {
+	if days >= len(u) {
+		return addTitles(u)
+	}
+	filename := "../cache/" + string(hashTitles(u)) + ".json"
+	cache := maybeLoadCache(filename)
+	w := days + 1
+	newInfo := w > len(cache)
+	plan := buildDynamicPlan(u, cache, days)
+	if newInfo {
+		maybeSaveCache(filename, plan)
+	}
+
+	result := make([]Unit, days)
+	j := len(u) - 1
+	for i := days; i >= 1; i-- {
+		result[i-1] = plan[i][j]
+		j = result[i-1].Prev
+	}
+	return result
+
+}
+
+// Greedy will read until the day's portion has been fulfilled.
+func Greedy(u []Unit, days int) []Unit {
+	if days >= len(u) {
+		return addTitles(u)
+	}
+
+	total := u[len(u)-1].Weight
+	result := make([]Unit, days)
+
+	var curr int
+	var prev int
+	for i := 0; i < days; i++ {
+		for ; u[curr].Weight < total*(float64(i)/float64(days)); curr++ {
+		}
+		result[i] = Unit{
+			Title: sessionTitle(u[prev], u[curr]),
+		}
+	}
+	return result
 }
 
 // loads a book to read into units.
@@ -190,7 +207,7 @@ func load(filename string, breakdowns ...Breakdown) []Unit {
 	for _, v := range verses {
 		var titles []string
 		for _, b := range breakdowns {
-			titles = append(titles, b.Select(v))
+			titles = append(titles, b(v))
 		}
 		title := strings.Join(titles, " ")
 		if curr.Title != title && curr.Weight != 0 {
@@ -205,4 +222,13 @@ func load(filename string, breakdowns ...Breakdown) []Unit {
 		result = append(result, curr)
 	}
 	return result
+}
+
+// Plan will create a reading plan.
+func Plan(filename string, days int, a Algorithm, breakdowns ...Breakdown) []Unit {
+	if filename == "" {
+		return nil
+	}
+	u := load(filename, breakdowns...)
+	return a(u, days)
 }

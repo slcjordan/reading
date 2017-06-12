@@ -36,6 +36,7 @@ func main() {
 	p := reading.Plan(
 		"../books/book-of-mormon.json",
 		days,
+		reading.Dynamic,
 		b...,
 	)
 	fmt.Printf("in order to read the book of mormon in %d days:\n", days)
