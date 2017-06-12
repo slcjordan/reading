@@ -2,10 +2,12 @@ package reading
 
 import (
 	"crypto/md5"
+	"encoding/binary"
 	"encoding/hex"
 	"encoding/json"
 	"io/ioutil"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -61,10 +63,18 @@ func minInt(a, b int) int {
 	return b
 }
 
-func hashTitles(units []Unit) string {
+func toByteArray(f float64) []byte {
+	buf := bytes.NewBuffer(make([]byte, 0, 8))
+	binary.Write(b, binary.LittleEndian, f)
+	return buf.Bytes()
+}
+
+func hashToString(units []Unit) string {
 	h := md5.New()
 	for _, u := range units {
 		h.Write([]byte(u.Title))
+		h.Write(toByteArray(u.Weight))
+		h.Write([]byte{u.Prev})
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -73,10 +83,16 @@ func maybeLoadCache(filename string) [][]Unit {
 	var cache [][]Unit
 	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.Println("could not read file ", filename, err)
+		if os.IsNotExist(err) {
+			log.Println(err, "while reading", filename)
+		}
 		return nil
 	}
-	_ = json.Unmarshal(contents, &cache)
+	err = json.Unmarshal(contents, &cache)
+	if err != nil {
+		log.Println(err, "while unmarshalling", filename)
+		return nil
+	}
 	return cache
 }
 
@@ -86,10 +102,14 @@ func maybeSaveCache(filename string, cache [][]Unit) {
 	}
 	contents, err := json.Marshal(cache)
 	if err != nil {
-		log.Println("could not read file ", filename, err)
+		log.Println(err, "while marshalling cache")
 		return
 	}
-	_ = ioutil.WriteFile(filename, contents, 0664) // permission
+	err = ioutil.WriteFile(filename, contents, 0664) // permission
+	if err != nil {
+		log.Println(err, "while saving", filename)
+		return
+	}
 }
 
 func sessionTitle(a, b Unit) string {
@@ -147,7 +167,7 @@ func Dynamic(u []Unit, days int) []Unit {
 	if days >= len(u) {
 		return addTitles(u)
 	}
-	filename := "../cache/" + string(hashTitles(u)) + ".json"
+	filename := "../cache/" + hashToString(u) + ".json"
 	cache := maybeLoadCache(filename)
 	w := days + 1
 	newInfo := w > len(cache)
@@ -188,19 +208,7 @@ func Greedy(u []Unit, days int) []Unit {
 	return result
 }
 
-// loads a book to read into units.
-func load(filename string, breakdowns ...Breakdown) []Unit {
-	f, err := ioutil.ReadFile(filename)
-	if err != nil {
-		log.Println(err)
-		return nil
-	}
-	var verses []verse
-	err = json.Unmarshal(f, &verses)
-	if err != nil {
-		log.Println("could not unmarshal", err)
-		return nil
-	}
+func breakdown(verses []verse, breakdowns ...Breakdown) []Unit {
 	var result []Unit
 	curr := Unit{}
 	var running float64
@@ -225,11 +233,28 @@ func load(filename string, breakdowns ...Breakdown) []Unit {
 	return result
 }
 
+// loads a book to read into units.
+func load(filename string) []verse {
+	f, err := ioutil.ReadFile(filename)
+	if err != nil {
+		log.Println(err, "while reading", filename)
+		return nil
+	}
+	var verses []verse
+	err = json.Unmarshal(f, &verses)
+	if err != nil {
+		log.Println(err, "while unmarshalling", filename)
+		return nil
+	}
+	return verses
+}
+
 // Plan will create a reading plan.
 func Plan(filename string, days int, a Algorithm, breakdowns ...Breakdown) []Unit {
 	if filename == "" || a == nil || days < 0 {
 		return nil
 	}
-	u := load(filename, breakdowns...)
+	v := load(filename)
+	u := breakdown(v, breakdowns...)
 	return a(u, days)
 }
