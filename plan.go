@@ -178,11 +178,12 @@ func Greedy(u []Unit, days int) []Unit {
 	var curr int
 	var prev int
 	for i := 0; i < days; i++ {
-		for ; u[curr].Weight < total*(float64(i)/float64(days)); curr++ {
+		for ; u[curr].Weight < total*(float64(i+1)/float64(days)); curr++ {
 		}
 		result[i] = Unit{
 			Title: sessionTitle(u[prev], u[curr]),
 		}
+		prev = curr
 	}
 	return result
 }
