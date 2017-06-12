@@ -18,10 +18,10 @@ type verse struct {
 	Text         string
 	Verse        json.Number
 	LastModified string `json:"last_modified"`
-	Section      string
+	Section      json.Number
 	Subsubtitle  string
 	Subtitle     string
-	Version      string
+	Version      json.Number
 }
 
 // Breakdown will group the reading by a category.
@@ -35,10 +35,10 @@ func Reference(v verse) string    { return v.Reference }
 func Text(v verse) string         { return v.Text }
 func Verse(v verse) string        { return v.Verse.String() }
 func LastModified(v verse) string { return v.LastModified }
-func Section(v verse) string      { return v.Section }
+func Section(v verse) string      { return v.Section.String() }
 func Subsubtitle(v verse) string  { return v.Subsubtitle }
 func Subtitle(v verse) string     { return v.Subtitle }
-func Version(v verse) string      { return v.Version }
+func Version(v verse) string      { return v.Version.String() }
 
 // A Unit is the lowest unit of reading.
 type Unit struct {
@@ -198,7 +198,7 @@ func load(filename string, breakdowns ...Breakdown) []Unit {
 	var verses []verse
 	err = json.Unmarshal(f, &verses)
 	if err != nil {
-		log.Println(err)
+		log.Println("could not unmarshal", err)
 		return nil
 	}
 	var result []Unit
@@ -227,7 +227,7 @@ func load(filename string, breakdowns ...Breakdown) []Unit {
 
 // Plan will create a reading plan.
 func Plan(filename string, days int, a Algorithm, breakdowns ...Breakdown) []Unit {
-	if filename == "" || a == nil {
+	if filename == "" || a == nil || days < 0 {
 		return nil
 	}
 	u := load(filename, breakdowns...)
