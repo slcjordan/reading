@@ -226,7 +226,7 @@ func load(filename string, breakdowns ...Breakdown) []Unit {
 
 // Plan will create a reading plan.
 func Plan(filename string, days int, a Algorithm, breakdowns ...Breakdown) []Unit {
-	if filename == "" {
+	if filename == "" || a == nil {
 		return nil
 	}
 	u := load(filename, breakdowns...)

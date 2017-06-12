@@ -23,22 +23,22 @@ func filename(r *http.Request) string {
 }
 
 func breakdowns(r *http.Request) []reading.Breakdown {
-	breakdown, ok := map[string][]reading.Breakdown{
+	return map[string][]reading.Breakdown{
 		"chapter": []reading.Breakdown{reading.Book, reading.Chapter},
 		"verse":   []reading.Breakdown{reading.Reference},
 	}[r.URL.Query().Get("breakdown")]
 }
 
 func days(r *http.Request) int {
-	days, err := strconv.ParseInt(r.URL.Query.Get("days"), 10, 0)
+	days, err := strconv.ParseInt(r.URL.Query().Get("days"), 10, 0)
 	if err != nil {
 		return 0
 	}
-	return days
+	return int(days)
 }
 
 func algorithm(r *http.Request) reading.Algorithm {
-	breakdown, ok := map[string]reading.Algorithm{
+	return map[string]reading.Algorithm{
 		"chapter": reading.Dynamic,
 		"verse":   reading.Greedy,
 	}[r.URL.Query().Get("breakdown")]
@@ -51,7 +51,7 @@ func handler(w http.ResponseWriter, r *http.Request) {
 			filename(r),
 			days(r),
 			algorithm(r),
-			breakdown(r)...,
+			breakdowns(r)...,
 		))
 
 	if err != nil {
