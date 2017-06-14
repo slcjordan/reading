@@ -9,7 +9,7 @@ import (
 
 func main() {
 	var days int
-	fmt.Print("How many days to read book of mormon? ")
+	fmt.Print("How many days to read d&c? ")
 	_, err := fmt.Fscanf(os.Stdin, "%d", &days)
 	if err != nil {
 		fmt.Println(err)
@@ -34,12 +34,12 @@ func main() {
 		[]reading.Breakdown{reading.Reference},
 	}[idx-1]
 	p := reading.Plan(
-		"../books/book-of-mormon.json",
+		"../books/pearl-of-great-price.json",
 		days,
-		reading.Dynamic,
+		reading.Greedy,
 		b...,
 	)
-	fmt.Printf("in order to read the book of mormon in %d days:\n", days)
+	fmt.Printf("in order to read the d&c in %d days:\n", days)
 	for i, session := range p {
 		fmt.Printf("day %d: %s\n", i+1, session.Title)
 	}

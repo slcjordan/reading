@@ -1,73 +1,131 @@
 
+
 $(document).ready(function() {
+
+    function includeTemplate(a, b){
+        return function(options){
+            var include = b(options);
+            return a(_.set(options, 'include', include));
+        };
+    }
+
+    function optionList(data){
+        return _
+            .chain(data.options)
+            .map(function(val){ return {'value': val};})
+            .map(_.template('<option value="<%= value %>"><% print(_.startCase(value)) %></option>'))
+            .value()
+            .join('');
+    }
+        
+    var label = _.template(
+        [   
+            '<div class="vex-custom-field-wrapper">',
+                '<label for="<%= name %>"><% print(_.startCase(name)) %>: </label>',
+                '<%= include %>',
+            '</div>'
+        ].join('')
+    );
+
+    var select = includeTemplate(
+        _.template('<select name="<%= name %>" required><%= include %></select>'),
+        optionList
+    );
+
+    var number = _.template('<input name="<%= name %>" min="1" type="number" value="<%= initial %>" required />');
+
+    function dialog(vex, options){
+        var renderInput = function(input){
+            if (_.has(input, 'options')){
+                return includeTemplate(label, select)(input);
+            } else if (_.isNumber(input.initial)) {
+                return includeTemplate(label, number)(input);
+            }                       
+            return '';
+        };
+        return vex.dialog.open(_.merge(options, {
+            input: _.map(options.input, renderInput).join(''),
+            buttons: [
+                _.merge({}, vex.dialog.buttons.YES, { text: 'Create' }),
+                _.merge({}, vex.dialog.buttons.NO, { text: 'Cancel' })
+            ]
+        }));
+    }
+
+    function dialogPlugin(vex) {
+        return {
+            name: 'plan',
+            open: _.partial(dialog, vex)
+        };
+    }
+
+    vex.registerPlugin(dialogPlugin);
+
+    function populate(target, start, sessions, options){
+        var dates = _.map(
+            _.times(sessions.length),
+            function(incr){
+                return {'start': start.clone().add(incr, 'day')};
+            }
+        );
+        var events = _.zipWith(sessions, dates, _.merge);
+        _.forEach(events, _.partial(_.set, _, 'events', events));
+        $(target).fullCalendar('renderEvents', events);
+        $(target).fullCalendar('unselect');
+    }
+
+    function planCreateFlow(start, end){
+        vex.plan.open({
+            message: 'Starting ' + start.format('ll'),
+            input: [
+                {
+                    name: 'book',
+                    options: [
+                        'book-of-mormon',
+                        'new-testament',
+                        'old-testament',
+                        'doctrine-and-covenants',
+                        'pearl-of-great-price'
+                    ]
+                },
+                {
+                    name: 'days',
+                    initial: 90
+                },
+                {
+                    name: 'breakdown',
+                    options: [
+                        'chapter',
+                        'verse'
+                    ]
+                }
+            ],
+            callback: function(options){
+                $.getJSON('plan', options, function(sessions){
+                    populate($('#calendar'), start, _.defaultTo(sessions, []), options);
+                });
+            }
+        });
+    }
+
+    function eventUpdateFlow(event){
+        vex.plan.open({
+            message: event.title + ' on ' + event.start.format('ddd, MMM D'),
+            input: [
+            ]
+        });
+    }
 
     $('#calendar').fullCalendar({
         editable: true,
-        // header
         header: {
-          left: 'prev,next today',
+          left: 'prev,next',
             center: 'title',
             right: 'month,agendaWeek'
         },
-        selectable: true,
+        selectable: false,
         selectHelper: true,
-        select: function(start, end) {
-            vex.dialog.open({
-                message: 'Starting ' + start.format('ll'),
-                input: [
-                    '<select name="book" required>',
-                         '<option value="book-of-mormon">Book of Mormon</option>',
-                         '<option value="new-testament">New Testament</option>',
-                         '<option value="old-testament">Old Testament</option>',
-                         // '<option value="doctrine-and-covenants">Doctrine and Covenants</option>',
-                         // '<option value="pearl-of-great-price">Pearl of Great Price</option>',
-                     '</select>',
-                    '<div class="vex-custom-field-wrapper">',
-                        '<label for="days">days: </label>',
-                        '<input name="days" min="1" max="800" type="number" placeholder="Number of Days" value="90" required />',
-                    '</div>',
-                    '<div class="vex-custom-field-wrapper">',
-                        '<label for="breakdown">broken down by: </label>',
-                        '<select name="breakdown">',
-                            '<option value="chapter">Chapter/Section</option>',
-                            '<option value="verse">Verse</option>',
-                        '</select>',
-                    '</div>'
-                ].join(''),
-                buttons: [
-                    $.extend({}, vex.dialog.buttons.YES, { text: 'Create' }),
-                    $.extend({}, vex.dialog.buttons.NO, { text: 'Cancel' })
-                ],
-                callback: function (data) {
-                    console.log(data);
-                    var eventData;
-                    $.ajax(
-                        'http://localhost:8080/plan',
-                        {
-                        data: data,
-                        success: function(result, status, jsqxhr){
-                            var events;
-                            events = JSON.parse(result).map(function(v, i){
-                                v.start = start.clone().add(i, 'day');
-                                v.title = v.Title;
-                                return v;
-                            });
-                            console.log(events);
-                            $('#calendar').fullCalendar(
-                                'renderEvents',
-                                events,
-                                true
-                            );
-                        },
-                        error: function(jqxhr, status, err){
-                            console.log(status);
-                            console.log(err); }
-                        });
-
-                    $('#calendar').fullCalendar('unselect');
-                }
-            });
-        }
+        dayClick: planCreateFlow,
+        eventClick: eventUpdateFlow
     });
-
 });

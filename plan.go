@@ -1,6 +1,7 @@
 package reading
 
 import (
+	"bytes"
 	"crypto/md5"
 	"encoding/binary"
 	"encoding/hex"
@@ -8,6 +9,7 @@ import (
 	"io/ioutil"
 	"log"
 	"os"
+	"path/filepath"
 	"strings"
 )
 
@@ -24,6 +26,17 @@ type verse struct {
 	Subsubtitle  string
 	Subtitle     string
 	Version      json.Number
+}
+
+// CacheDirectory stores intermediate results.
+var CacheDirectory string
+
+func init() {
+	var err error
+	CacheDirectory, err = ioutil.TempDir("", "reading")
+	if err != nil {
+		log.Fatalln(err, "while creating cache directory")
+	}
 }
 
 // Breakdown will group the reading by a category.
@@ -65,7 +78,7 @@ func minInt(a, b int) int {
 
 func toByteArray(f float64) []byte {
 	buf := bytes.NewBuffer(make([]byte, 0, 8))
-	binary.Write(b, binary.LittleEndian, f)
+	binary.Write(buf, binary.LittleEndian, f)
 	return buf.Bytes()
 }
 
@@ -74,7 +87,6 @@ func hashToString(units []Unit) string {
 	for _, u := range units {
 		h.Write([]byte(u.Title))
 		h.Write(toByteArray(u.Weight))
-		h.Write([]byte{u.Prev})
 	}
 	return hex.EncodeToString(h.Sum(nil))
 }
@@ -105,7 +117,7 @@ func maybeSaveCache(filename string, cache [][]Unit) {
 		log.Println(err, "while marshalling cache")
 		return
 	}
-	err = ioutil.WriteFile(filename, contents, 0664) // permission
+	err = ioutil.WriteFile(filename, contents, 0664) // perm
 	if err != nil {
 		log.Println(err, "while saving", filename)
 		return
@@ -116,7 +128,7 @@ func sessionTitle(a, b Unit) string {
 	if a.Title == b.Title {
 		return "Read " + a.Title
 	}
-	return "Read " + a.Title + " - " + b.Title
+	return "Read " + a.Title + " through " + b.Title
 }
 
 func buildDynamicPlan(u []Unit, cache [][]Unit, days int) [][]Unit {
@@ -167,7 +179,7 @@ func Dynamic(u []Unit, days int) []Unit {
 	if days >= len(u) {
 		return addTitles(u)
 	}
-	filename := "../cache/" + hashToString(u) + ".json"
+	filename := filepath.Join(CacheDirectory, hashToString(u)+".json")
 	cache := maybeLoadCache(filename)
 	w := days + 1
 	newInfo := w > len(cache)
