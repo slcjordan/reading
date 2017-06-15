@@ -77,7 +77,7 @@ func main() {
 	flag.Parse()
 	defer os.RemoveAll(reading.CacheDirectory)
 
-	fs := http.FileServer(http.Dir("site"))
+	fs := http.FileServer(http.Dir("dist"))
 	http.HandleFunc("/plan", handler)
 	http.Handle("/", fs)
 	info.Println("serving at " + addr)

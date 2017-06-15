@@ -1,0 +1,27 @@
+{
+  "name": "reading",
+  "title": "Reading",
+  "description": "reading plan generator",
+  "version": "0.1.0",
+  "homepage": "https://github.com/slcjordan/reading",
+  "author": {
+    "name": "Jordan Crabtree",
+    "email": "jordan.d.crabtree@gmail.com",
+    "url": "slcjordan.github.io"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git://github.com/slcjordan/reading.git"
+  },
+  "bugs": "https://github.com/slcjordan/reading/issues",
+  "licenses": [
+    {
+      "type": "MIT",
+      "url": "https://github.com/slcjordan/reading/blob/master/LICENSE-MIT"
+    }
+  ],
+  "dependencies": {
+    "jquery": "*"
+  },
+  "keywords": []
+}
