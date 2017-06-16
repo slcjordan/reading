@@ -33,7 +33,8 @@ module.exports = function(grunt) {
               'web/src/js/moment.min.js',
               'web/src/js/fullcalendar.min.js',
               'web/src/js/vex.combined.min.js',
-              'web/src/js/app.js'
+              'web/src/js/app.js',
+              'web/src/js/**.js'
           ],
           dest: 'web/dist/js/<%= pkg.name %>.js'
       }

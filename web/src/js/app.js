@@ -34,6 +34,17 @@ $(document).ready(function() {
 
     var number = _.template('<input name="<%= name %>" min="1" type="number" value="<%= initial %>" required />');
 
+    function debounce(wait) {
+        var start = new Date().getTime();
+        return function(){
+            var end = new Date().getTime();
+            if ((end - start) < wait){
+                return false;
+            }
+            return true;
+        };
+    }
+
     function dialog(vex, options){
         var buttons = [];
         if (_.has(options, 'yes')){
@@ -51,6 +62,7 @@ $(document).ready(function() {
             return '';
         };
         return vex.dialog.open(_.merge(options, {
+            beforeClose: debounce(250),
             input: _.map(options.input, renderInput).join(''),
             buttons: buttons
         }));
