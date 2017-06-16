@@ -62,7 +62,8 @@ $(document).ready(function() {
             return '';
         };
         return vex.dialog.open(_.merge(options, {
-            beforeClose: debounce(250),
+            beforeClose: debounce(500),
+            focusFirstInput: false,
             input: _.map(options.input, renderInput).join(''),
             buttons: buttons
         }));
