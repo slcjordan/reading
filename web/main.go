@@ -9,7 +9,9 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/phyber/negroni-gzip/gzip"
 	"github.com/slcjordan/reading"
+	"github.com/urfave/negroni"
 )
 
 var info = log.New(os.Stdout, "", log.LstdFlags)
@@ -77,9 +79,13 @@ func main() {
 	flag.Parse()
 	defer os.RemoveAll(reading.CacheDirectory)
 
-	fs := http.FileServer(http.Dir("dist"))
-	http.HandleFunc("/plan", handler)
-	http.Handle("/", fs)
+	mux := http.NewServeMux()
+	mux.HandleFunc("/plan", handler)
+	n := negroni.Classic()
+	n.Use(gzip.Gzip(gzip.DefaultCompression))
+	n.Use(negroni.NewStatic(http.Dir("dist")))
+	n.UseHandler(mux)
+
 	info.Println("serving at " + addr)
-	http.ListenAndServe(addr, nil)
+	http.ListenAndServe(addr, n)
 }
