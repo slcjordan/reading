@@ -35,6 +35,13 @@ $(document).ready(function() {
     var number = _.template('<input name="<%= name %>" min="1" type="number" value="<%= initial %>" required />');
 
     function dialog(vex, options){
+        var buttons = [];
+        if (_.has(options, 'yes')){
+            buttons.push(_.merge({}, vex.dialog.buttons.YES, { text: options.yes }));
+        }
+        if (_.has(options, 'no')){
+            buttons.push(_.merge({}, vex.dialog.buttons.NO, { text: options.no }));
+        }
         var renderInput = function(input){
             if (_.has(input, 'options')){
                 return includeTemplate(label, select)(input);
@@ -45,10 +52,7 @@ $(document).ready(function() {
         };
         return vex.dialog.open(_.merge(options, {
             input: _.map(options.input, renderInput).join(''),
-            buttons: [
-                _.merge({}, vex.dialog.buttons.YES, { text: 'Create' }),
-                _.merge({}, vex.dialog.buttons.NO, { text: 'Cancel' })
-            ]
+            buttons: buttons
         }));
     }
 
@@ -70,7 +74,7 @@ $(document).ready(function() {
         );
         var events = _.zipWith(sessions, dates, _.merge);
         _.forEach(events, _.partial(_.set, _, 'events', events));
-        $(target).fullCalendar('renderEvents', events);
+        $(target).fullCalendar('renderEvents', events, true);  // stick
         $(target).fullCalendar('unselect');
     }
 
@@ -100,6 +104,8 @@ $(document).ready(function() {
                     ]
                 }
             ],
+            yes: 'Create',
+            no:  'Cancel',
             callback: function(options){
                 $.getJSON('plan', options, function(sessions){
                     populate($('#calendar'), start, _.defaultTo(sessions, []), options);
@@ -112,7 +118,8 @@ $(document).ready(function() {
         vex.plan.open({
             message: event.title + ' on ' + event.start.format('ddd, MMM D'),
             input: [
-            ]
+            ],
+            no:  'OK'
         });
     }
 

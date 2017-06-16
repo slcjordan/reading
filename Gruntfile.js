@@ -20,21 +20,23 @@ module.exports = function(grunt) {
         stripBanners: true,
         separator: ';\n'
       },
-      distjs: {
-        src: [
-            'web/src/js/jquery-3.2.1.min.js',
-            'web/src/js/lodash.min.js',
-            'web/src/js/moment.min.js',
-            'web/src/js/fullcalendar.min.js',
-            'web/src/js/vex.combined.min.js',
-            'web/src/js/app.js'
-        ],
-        dest: 'web/dist/js/<%= pkg.name %>.js'
-      },
       disthtml: {
-        src: ['web/src/index.html'],
+        src: [
+            'web/src/index.html'
+        ],
         dest: 'web/dist/index.html'
       },
+      distjs: {
+          src: [
+              'web/src/js/jquery-3.2.1.min.js',
+              'web/src/js/lodash.min.js',
+              'web/src/js/moment.min.js',
+              'web/src/js/fullcalendar.min.js',
+              'web/src/js/vex.combined.min.js',
+              'web/src/js/app.js'
+          ],
+          dest: 'web/dist/js/<%= pkg.name %>.js'
+      }
     },
     uglify: {
       options: {
@@ -43,7 +45,7 @@ module.exports = function(grunt) {
       dist: {
         src: '<%= concat.distjs.dest %>',
         dest: 'web/dist/js/<%= pkg.name %>.min.js'
-      },
+      }
     },
     cssmin: {
       options: {
@@ -53,38 +55,29 @@ module.exports = function(grunt) {
       target: {
         files: {
           'web/dist/css/<%= pkg.name %>.min.css': ['web/src/css/*.css']
-        },
-      },
+        }
+      }
     },
-    jshint: {
-      options: {
-        jshintrc: true,
-        reporterOutput: ""
-      },
-      gruntfile: {
-        src: 'Gruntfile.js'
-      },
-      src: {
-        src: ['web/src/src/app.js']
-      },
-      test: {
-        src: ['web/test/**/*.js']
-      },
+    insert:
+      {
+        options: {},
+         js: {
+                 src:  '<%= uglify.dist.dest %>',
+                 dest:   '<%= concat.disthtml.dest %>',
+                 match: "<!-- grunt-insert:js -->"
+         },
+         css: {
+                 src:  'web/dist/css/<%= pkg.name %>.min.css',
+                 dest:   '<%= concat.disthtml.dest %>',
+                 match: "<!-- grunt-insert:css -->"
+         }
     },
     watch: {
-      gruntfile: {
-        files: '<%= jshint.gruntfile.src %>',
-        tasks: ['jshint:gruntfile']
-      },
       src: {
         files: '<%= jshint.src.src %>',
         tasks: ['jshint:src']
-      },
-      test: {
-        files: '<%= jshint.test.src %>',
-        tasks: ['jshint:test']
-      },
-    },
+      }
+    }
   });
 
   // These plugins provide necessary tasks.
@@ -94,8 +87,9 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-cssmin');
+  grunt.loadNpmTasks('grunt-insert');
 
   // Default task.
-  grunt.registerTask('default', ['jshint', 'clean', 'concat', 'uglify', 'cssmin']);
+  grunt.registerTask('default', ['clean', 'concat', 'uglify', 'cssmin', 'insert']);
 
 };
