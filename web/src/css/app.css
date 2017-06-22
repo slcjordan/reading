@@ -1,0 +1,6 @@
+.fc-unthemed td.fc-today{
+  background: none;
+}
+.fc-day-grid-event .fc-content{
+  white-space: normal;
+}

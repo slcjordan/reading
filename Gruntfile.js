@@ -13,7 +13,7 @@ module.exports = function(grunt) {
       ' Licensed <%= _.pluck(pkg.licenses, "type").join(", ") %> */\n',
     // Task configuration.
     clean: {
-      files: ['web/dist']
+      files: ['web/dist', 'web/dev']
     },
     concat: {
       options: {
@@ -28,15 +28,22 @@ module.exports = function(grunt) {
       },
       distjs: {
           src: [
-              'web/src/js/jquery-3.2.1.min.js',
-              'web/src/js/lodash.min.js',
-              'web/src/js/moment.min.js',
-              'web/src/js/fullcalendar.min.js',
-              'web/src/js/vex.combined.min.js',
+              'web/src/js/jquery-3.2.1.js',
+              'web/src/js/lodash.js',
+              'web/src/js/moment.js',
+              'web/src/js/fullcalendar.js',
+              'web/src/js/vex.combined.js',
               'web/src/js/app.js',
-              'web/src/js/**.js'
+              'web/src/js/analytics.js'
           ],
           dest: 'web/dist/js/<%= pkg.name %>.js'
+      }
+    },
+    copy:{
+      dev: {
+        files: [
+          {expand: true, cwd: 'web/src', src: ['**'], dest: 'web/dev/', filter: 'isFile'}
+        ]
       }
     },
     uglify: {
@@ -55,22 +62,72 @@ module.exports = function(grunt) {
       },
       target: {
         files: {
-          'web/dist/css/<%= pkg.name %>.min.css': ['web/src/css/*.css']
+          'web/dist/css/<%= pkg.name %>.min.css': [
+              'web/src/css/fullcalendar.css',
+              'web/src/css/vex.css',
+              'web/src/css/vex-theme-wireframe.css',
+              'web/src/css/app.css'
+          ]
         }
       }
+    },
+    writefile: {
+        options: {
+            paths: {
+                js: {
+                    cwd: 'web/src',
+                    src: [
+                          'js/jquery-3.2.1.js',
+                          'js/lodash.js',
+                          'js/moment.js',
+                          'js/fullcalendar.js',
+                          'js/vex.combined.js',
+                          'js/app.js',
+                          'js/app.js'
+                    ]
+                },
+                css: {
+                    cwd: 'web/src',
+                    src: [
+                        'css/fullcalendar.css',
+                        'css/vex.css',
+                        'css/vex-theme-wireframe.css',
+                        'css/app.css'
+                    ]
+                }
+            }
+        },
+        devjs: {
+            src: 'web/src/templates/js.hbs',
+            dest: 'web/dev/js.html'
+        },
+        devcss: {
+            src: 'web/src/templates/css.hbs',
+            dest: 'web/dev/css.html'
+        }
     },
     insert:
       {
         options: {},
-         js: {
+         distjs: {
                  src:  '<%= uglify.dist.dest %>',
                  dest:   '<%= concat.disthtml.dest %>',
-                 match: "<!-- grunt-insert:js -->"
+                 match: '<!-- grunt-insert:js -->'
          },
-         css: {
+         devjs: {
+                 src:  '<%= writefile.devjs.dest %>',
+                 dest:   'web/dev/index.html',
+                 match: '<script type="text/javascript"><!-- grunt-insert:js --></script>'
+         },
+         distcss: {
                  src:  'web/dist/css/<%= pkg.name %>.min.css',
                  dest:   '<%= concat.disthtml.dest %>',
-                 match: "<!-- grunt-insert:css -->"
+                 match: '<!-- grunt-insert:css -->'
+         },
+         devcss: {
+                 src:  '<%= writefile.devcss.dest %>',
+                 dest:   'web/dev/index.html',
+                 match: '<style><!-- grunt-insert:css --></style>'
          }
     },
     watch: {
@@ -88,9 +145,11 @@ module.exports = function(grunt) {
   grunt.loadNpmTasks('grunt-contrib-jshint');
   grunt.loadNpmTasks('grunt-contrib-watch');
   grunt.loadNpmTasks('grunt-contrib-cssmin');
+  grunt.loadNpmTasks('grunt-writefile');
   grunt.loadNpmTasks('grunt-insert');
+  grunt.loadNpmTasks('grunt-contrib-copy');
 
   // Default task.
-  grunt.registerTask('default', ['clean', 'concat', 'uglify', 'cssmin', 'insert']);
+  grunt.registerTask('default', ['clean', 'copy', 'concat', 'uglify', 'cssmin', 'writefile', 'insert']);
 
 };

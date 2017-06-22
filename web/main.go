@@ -75,7 +75,9 @@ func handler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 	var addr string
+	var static string
 	flag.StringVar(&addr, "addr", "0.0.0.0:80", "the address to serve from")
+	flag.StringVar(&static, "static", "dist", "the static directory")
 	flag.Parse()
 	defer os.RemoveAll(reading.CacheDirectory)
 
@@ -83,7 +85,7 @@ func main() {
 	mux.HandleFunc("/plan", handler)
 	n := negroni.Classic()
 	n.Use(gzip.Gzip(gzip.DefaultCompression))
-	n.Use(negroni.NewStatic(http.Dir("dist")))
+	n.Use(negroni.NewStatic(http.Dir(static)))
 	n.UseHandler(mux)
 
 	info.Println("serving at " + addr)
