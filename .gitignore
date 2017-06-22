@@ -1,4 +1,5 @@
 /node_modules/
 web/main
 web/dist
+web/dev
 web/src/js/analytics.js

@@ -42,7 +42,9 @@ module.exports = function(grunt) {
     copy:{
       dev: {
         files: [
-          {expand: true, cwd: 'web/src', src: ['**'], dest: 'web/dev/', filter: 'isFile'}
+          {expand: true, cwd: 'web/src', src: ['**'], dest: 'web/dev/', filter: 'isFile'},
+          {expand: true, cwd: 'web/src/assets', src: ['**'], dest: 'web/dev/', filter: 'isFile'},
+          {expand: true, cwd: 'web/src/assets', src: ['**'], dest: 'web/dist/', filter: 'isFile'}
         ]
       }
     },
