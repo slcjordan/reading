@@ -9,15 +9,14 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/phyber/negroni-gzip/gzip"
+	"github.com/gorilla/handlers"
+	"github.com/gorilla/mux"
 	"github.com/slcjordan/reading"
-	"github.com/urfave/negroni"
 )
 
 var info = log.New(os.Stdout, "", log.LstdFlags)
 
 func filename(r *http.Request) string {
-	info.Println("{", r.URL.Query().Get("book"), "}")
 	return map[string]string{
 		"book-of-mormon":         "../books/book-of-mormon.json",
 		"new-testament":          "../books/new-testament.json",
@@ -28,7 +27,6 @@ func filename(r *http.Request) string {
 }
 
 func breakdowns(r *http.Request) []reading.Breakdown {
-	info.Println("{", r.URL.Query().Get("breakdown"), "}")
 	return map[string][]reading.Breakdown{
 		"chapter": []reading.Breakdown{reading.Book, reading.Chapter},
 		"verse":   []reading.Breakdown{reading.Reference},
@@ -40,7 +38,6 @@ func days(r *http.Request) int {
 	if err != nil {
 		return 0
 	}
-	info.Println("{", r.URL.Query().Get("days"), "}")
 	return int(days)
 }
 
@@ -81,13 +78,16 @@ func main() {
 	flag.Parse()
 	defer os.RemoveAll(reading.CacheDirectory)
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/plan", handler)
-	n := negroni.Classic()
-	n.Use(gzip.Gzip(gzip.DefaultCompression))
-	n.Use(negroni.NewStatic(http.Dir(static)))
-	n.UseHandler(mux)
+	r := mux.NewRouter()
+	r.HandleFunc("/plan", handler)
+	r.PathPrefix("/").Handler(http.StripPrefix("/", http.FileServer(http.Dir(static))))
 
 	info.Println("serving at " + addr)
-	http.ListenAndServe(addr, n)
+	http.ListenAndServe(addr,
+		handlers.RecoveryHandler(
+			handlers.PrintRecoveryStack(true),
+		)(
+			handlers.LoggingHandler(os.Stdout,
+				handlers.CompressHandler(r),
+			)))
 }
